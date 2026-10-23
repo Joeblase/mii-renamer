@@ -84,15 +84,16 @@ static void StopCritical(const char* msg) {
 
     // Critial Loop.
     while(true) {
-        // Scan WPAD
+        // Scan WPAD and GameCube pads
         WPAD_ScanPads();
+        PAD_ScanPads();
         s32 pressed[4]; // State on every remote.
 
         // Get the remote states.
         for(int rmt = 0; rmt < 4; rmt++) pressed[rmt] = WPAD_ButtonsDown(rmt);
 
         // Check for home on each remote, and check reset button.
-        for(int rmt = 0; rmt < 4; rmt++) if(pressed[rmt] & WPAD_BUTTON_HOME || SYS_ResetButtonDown()) break;
+        for(int rmt = 0; rmt < 4; rmt++) if(pressed[rmt] & WPAD_BUTTON_HOME || PAD_ButtonsDown(rmt) & PAD_BUTTON_START || SYS_ResetButtonDown()) break;
         
         // Wait VSync.
         VIDEO_WaitVSync();
@@ -103,14 +104,29 @@ static void StopCritical(const char* msg) {
     exit(1);
 }
 
+// Translate GameCube controller buttons into their Wii Remote equivalents
+u32 pad_to_wpad(u32 buttons) {
+	u32 wpad = 0;
+	if (buttons & PAD_BUTTON_A) wpad |= WPAD_BUTTON_A;
+	if (buttons & PAD_BUTTON_B) wpad |= WPAD_BUTTON_B;
+	if (buttons & PAD_BUTTON_START) wpad |= WPAD_BUTTON_HOME;
+	if (buttons & PAD_BUTTON_X) wpad |= WPAD_BUTTON_PLUS;
+	if (buttons & PAD_BUTTON_LEFT) wpad |= WPAD_BUTTON_LEFT;
+	if (buttons & PAD_BUTTON_RIGHT) wpad |= WPAD_BUTTON_RIGHT;
+	if (buttons & PAD_BUTTON_UP) wpad |= WPAD_BUTTON_UP;
+	if (buttons & PAD_BUTTON_DOWN) wpad |= WPAD_BUTTON_DOWN;
+	return wpad;
+}
+
 u32 read_inputs(void) {
-	// Call WPAD_ScanPads each loop, this reads the latest controller states
+	// Call WPAD_ScanPads and PAD_ScanPads each loop, this reads the latest controller states
 	WPAD_ScanPads();
+	PAD_ScanPads();
 
 	// WPAD_ButtonsDown tells us which buttons were pressed in this loop
 	// this is a "one shot" state which will not fire again until the button
 	// has been released
-	u32 pressed = WPAD_ButtonsDown(0);
+	u32 pressed = WPAD_ButtonsDown(0) | pad_to_wpad(PAD_ButtonsDown(0));
 
 	// We return to the launcher application via exit
 	if (pressed & WPAD_BUTTON_HOME)
@@ -134,7 +150,7 @@ int read_dpad(void) {
 	static int das = 0;
 	static int das_inputs = 0;
 
-	u32 held = WPAD_ButtonsHeld(0);
+	u32 held = WPAD_ButtonsHeld(0) | pad_to_wpad(PAD_ButtonsHeld(0));
 
 	if ((held & WPAD_DPAD) != das_inputs) {
 		das_inputs = held & WPAD_DPAD;
@@ -168,7 +184,7 @@ void mii_rename(u16 *name_ptr) {
 		}
 	}
 
-	printf("Left/Right to move cursor, Up/Down to change letter,\nA to confirm, B to cancel, HOME to exit\n");
+	printf("Left/Right to move cursor, Up/Down to change letter,\nA to confirm, B to cancel, HOME to exit\nGameCube controller: START to exit\n");
 
 	do {
 		u32 pressed = read_inputs();
@@ -277,7 +293,7 @@ void redraw_mii_list(int camera) {
 void mii_selector_reset(int camera) {
 	SetCursor(0, 5);
 	ClearBelowCursor();
-	printf("D-Pad to select, A to rename, + to save, HOME to exit\n");
+	printf("D-Pad to select, A to rename, + to save, HOME to exit\nGameCube controller: X to save, START to exit\n");
 	redraw_mii_list(camera);
 }
 
@@ -338,6 +354,7 @@ int main(void) {
 
 	// This function initialises the attached controllers
 	WPAD_Init();
+	PAD_Init();
 
 	// Obtain the preferred video mode from the system
 	// This will correspond to the settings in the Wii menu

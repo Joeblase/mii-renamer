@@ -20,3 +20,6 @@ Using Mii Renamer is simple: select the Mii you want to edit with the Wii Remote
 then rename the Mii using the D-Pad. Names can be up to 10 characters long.
 If your Mii's name doesn't fit entirely within ASCII, its name cannot currently be edited.
 When you're done, press + on the main menu to save your changes.
+
+A GameCube controller in port 1 also works: use the D-Pad to navigate, A and B as usual,
+X to save, and START to exit.
